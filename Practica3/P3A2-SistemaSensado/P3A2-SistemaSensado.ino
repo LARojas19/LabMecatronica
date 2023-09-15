@@ -11,10 +11,14 @@
 #define echoPin 34
 #define fotoresistor 14
 
+byte LEDS[] = {v1, v2, a1, a2, r1, r2};
+
+
 NewPing sonar(trigPin,echoPin,100);
 //int duracion;
 int distancia;
 //int velSonido = 0.0343; //cm/microsegundo
+
 
 bool obstaculo;
 bool temporizador;
@@ -26,9 +30,11 @@ bool d4;
 bool d5;
 bool d6;
 
-
+bool continua;
 int luminosidad;
-
+const int controlLEDPWM  = 1023;
+//6142 - Valor máximo después del ajuste 
+//
 
 int lecturaTouch;
 bool bandera1;
@@ -48,6 +54,7 @@ void setup() {
   pinMode(echoPin, INPUT);
   pinMode(trigPin, OUTPUT);
   Serial.begin(115200);
+  ledcSetup(0, 1000, 10);
 }
 
 void loop() {
@@ -58,7 +65,7 @@ void loop() {
   lecturaTouch = touchRead(T3);
   bandera3 = lecturaTouch < 30;
   errorTouch();
-  setZeros();
+  reset();
   if(bandera1) detectaObstaculo();
   if(bandera2) ultrasonico();
   if(bandera3) detectaLuminosidad();
@@ -68,7 +75,7 @@ void loop() {
 }
 
 
-void setZeros(){
+void reset(){
   obstaculo = 0;
   d1 = 0;
   d2 = 0;
@@ -106,8 +113,40 @@ void errorTouch(){
 }
 
 void detectaLuminosidad(){
-  luminosidad = analogRead(fotoresistor);
   //Min 0 - Max 4095
+  byte anterior;
+  byte c;
+  while(bandera3){
+    apagaLuces();
+    continua = 1;
+    c = 5;
+    luminosidad = analogRead(fotoresistor);
+    luminosidad = map(luminosidad, 0, 4095, 0, 6138);
+    while(continua){
+      if(luminosidad >= c*controlLEDPWM){
+        if(anterior != c){
+          ledcDetachPin(LEDS[anterior]);
+          ledcAttachPin(LEDS[c], 0);
+        }
+        ledcWrite(0,(c + 1)*controlLEDPWM - luminosidad);
+        continua = 0;
+      }
+      else{
+        digitalWrite(LEDS[c], HIGH);
+        c--;
+      }
+    }
+    luminosidad = map(luminosidad, 0, 6138, 0, 100);
+    imprime();
+    lecturaTouch = touchRead(T3);
+    bandera3 = lecturaTouch < 30;
+    anterior = c;
+    if(!bandera3){
+      ledcDetachPin(LEDS[c]);
+      digitalWrite(LEDS[c], LOW);
+    }
+    delay(200);
+  }
 }
 
 void detectaObstaculo(){
