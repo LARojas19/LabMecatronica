@@ -11,6 +11,7 @@ void setup() {
 }
 
 void loop() {
+  //Modulacion por pulsos
   for(l = 0; l <= 1023; l++){
     ledcWrite(channel, l);
     delay(10);
